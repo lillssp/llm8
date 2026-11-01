@@ -103,7 +103,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-api_key = st.text_input("Gemini API key", type="password", placeholder="AIza...")
+api_key = st.text_input("Gemini API key", type="password", placeholder="...")
 text = st.text_area("Lecture text", height=200)
 file = st.file_uploader("Or upload a file", type=["txt", "md", "pdf", "docx"])
 
