@@ -3,8 +3,15 @@ from docx import Document
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-3.5-flash"
-MAX_CHARS = 60000  
+MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
+RETRY_ERRORS = ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND")
+MAX_CHARS = 60000 
 MAX_PDF_MB = 18  
 
 PROMPT = """You are an experienced and friendly mentor. Turn raw notes, text or slides \
@@ -71,12 +78,19 @@ def summarize(api_key, text, file):
 
     contents = [c[:MAX_CHARS] if isinstance(c, str) else c for c in contents]
 
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(model=MODEL, contents=contents)
-        return response.text
-    except Exception as e:
-        return f"Error: {e}"
+    client = genai.Client(api_key=api_key)
+    last_error = None
+    for model in MODELS:
+        try:
+            response = client.models.generate_content(model=model, contents=contents)
+            if response.text:
+                return response.text
+        except Exception as e:
+            last_error = str(e)
+            if not any(code in last_error for code in RETRY_ERRORS):
+                return f"Error: {last_error}"  
+
+    return f"All models are busy right now, please try again in a minute.\n\n{last_error}"
 
 
 st.set_page_config(page_title="Lecture Notes Maker", page_icon="🌸")
@@ -89,7 +103,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-api_key = st.text_input("Gemini API key", type="password", placeholder="...")
+api_key = st.text_input("Gemini API key", type="password", placeholder="AIza...")
 text = st.text_area("Lecture text", height=200)
 file = st.file_uploader("Or upload a file", type=["txt", "md", "pdf", "docx"])
 
